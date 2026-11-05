@@ -1,0 +1,150 @@
+plans
+
+- admin commands
+  - banish
+    - User given the banished role and can only message in the abyss channel
+  - unbanish
+    - Removes the banished role from a user, allowing them to message normally again
+  - create item
+    - Allows an admin to create a new item that can be added to the inventory system
+    - Admin can specify item name, description, and effects
+      - not sure how the effects will be implemented
+  - alter item
+    - Allows an admin to modify an existing item's properties such as name, description, and effects
+  - spawn item
+    - Allows an admin to spawn an item into a user's inventory
+  - destroy item
+    - Allows an admin to permanently remove an item from a user's inventory
+  - content moderation
+    - Deactivate user-created content, making it unavailable without permanently deleting it
+    - Destroy user-created content permanently
+    - List all user-created content submitted by a specified user
+    - Restore deactivated content when appropriate
+    - Record moderator actions and reasons
+
+- karma system branded as "wisdom"
+  - linear karma decay on inactive after 1 week
+  - karma gain on send messages
+    - follows animal crossing gamecube letter grading system
+  - "+rep" and "-rep" commands for people to give or remove karma from others
+    - cooldown 1per day, shared across all users and both "+rep" and "-rep" commands
+- inventory system
+  - check inventory
+    - shows the users inventory
+  - give item
+    - Allows a user to give an item from their inventory to another user
+  - toss item
+    - Allows a user to remove an item from their inventory
+  - use item
+    - Allows a user to use an item from their inventory, triggering its effect
+  - items:
+    - dungeon tiles, traps, monsters, etc.
+    - colored robes (role color)
+    - pocket glitter (makes the current channels text history hidden for a certain duration)
+    - spell tomes (fun commands locked behind reading the tomes)
+      - uwu, explosion, roll, summon cat
+      - The more annoying or intrusive a spell, the more expensive it is in the shop currency (Gold)
+    - giant gold statue (birdly statue that gives you a dweeb role)
+    - orb (for pondering) 
+      - see random visions
+    - seance item
+      - Creates a thread that acts as a link between any channel and the thread, allowing communication with wizards banished to the void through the seance item
+      - This includes the abyss, letting players communicate with wizards banished there
+    - projection stone
+      - Upon creation user can store a string of text within the stone, which can later be reproduced by casting the stone
+      - this can be used for silly image embeds or prompts
+      - An emote can be set that globalizes a projection stone once enough users react with it, making it usable by all users who have the projection spell.
+      - Users can list all active global projection stones
+      - Moderators can deactivate, destroy, or restore projection stones
+- shop
+  - currency is what? (not wisdom)
+    - Gold (G)
+  - check gold command
+    - Shows the user's current wealth in the shop currency (Gold)
+  - pay command
+    - Allows a user to give a specified amount of shop currency (Gold) to another user
+  - trade offer
+    - Allows a user to propose a trade with another user, specifying items and/or shop currency (Gold) to exchange
+    - The other user can accept or decline the trade offer
+- dungeon maker port
+  - Allows users to create, manage, and play ascii/text-based dungeons within Discord
+  - Players can invade each other's dungeons
+  - Maybe integrate with shop?
+    - sell dungeon tiles
+    - sell dungeon traps
+    - sell dungeon monsters
+    - sell treasures
+      - owner of dungeon gets reward if treasure is not claimed by invaders
+- potion brewing
+  - allows a user to brew potions using ingredients from their inventory
+    - start with the minecraft brewing system as a base
+  - sell potions for shop currency (Gold)
+  - use them in dungeon invasions
+- crafting?
+  - ingredient combinations
+  - id have to make up a bunch of items and crafting trees
+  - could integrate with potion brewing and dungeon maker for ingredients and crafted items
+  - could also integrate with the shop for selling crafted items
+  - make main money loop be crafting artifacts and selling/high-alch'ing them
+- claim daily
+  - Allows a user to claim their daily reward of wisdom and gold
+  - User must have gained enough karma/wisdom in the past 24 rolling hours to claim the daily reward
+  - The daily reward also has a 24 hour cooldown
+  - The reward consists of both some wisdom and some gold, not much
+    - I think the amount of wisdom and gold should scale with the user's recent activity and karma gain
+- pocket dimension
+  - Creates a thread in the current channel
+- toys/silly spells
+  - magic missile
+    - Casts explode at the specified user after a random delay from 5 minutes to 2 weeks
+    - a wizard can only have one active magic missile at a time
+  - dither command
+  - ponder command
+    - magic 8 ball style responses
+  - uwu
+    - UWUify text, defaults to previous message in channel
+  - explosion/explode
+    - Respond with a random explosion gif
+    - optionally provide image to overlay explosion gif over the image
+    - optionally ping a user to overlay the explosion on their profile picture (and ping them)
+  - summon cat
+    - Respond with a random cat image, potentially from cataas
+  - timestamp
+    - convert a human time string input into a discord timestamp
+  - games
+    - connect 4
+    - tictactoe
+    - mancala
+    - knucklebones
+    - guessthenumber
+  - roll
+    - Roll a number of dice with a specified number of sides, defaults to 6
+  - calculate
+  - coinflip
+  - flame text
+    - Converts the input text into a flaming style text effect
+  - babel
+    - Looks up which book in the libary of babel contains the specified text
+    - Returns the book's location and a link to view it
+    - I think I want this to be needlessly complex and flexible
+    - allow finding books with the title, or containing specific text
+  - define
+    - Looks up the definition of a specified word
+    - Returns the word's meaning, part of speech, and example usage if available
+  - up thumber
+    - replies with a random thumbs up image
+  - down thumber
+    - replies with a random thumbs down image
+  - read fortune
+    - Responds with a random fortune message
+  - conjure security scroll
+    - Places the "security scroll" item in the user's inventory
+    - Using the security scroll item replies with the following message: "You unfurl the security scroll, it reads: 'The secret passkey is: 4'"
+  - auto react
+    - Automatically reacts to messages with matching content with a specified emoji
+  - auto reply
+    - Automatically replies to messages with matching content with a specified response
+  - whisper to the void
+    - sends a message to the abyss
+  - listen to the void
+    - Casts a 30 second net that returns any messages sent for the next 30 seconds after it is cast
