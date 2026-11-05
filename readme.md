@@ -63,11 +63,19 @@ plans
     - Shows the user's current wealth in the shop currency (Gold)
   - pay command
     - Allows a user to give a specified amount of shop currency (Gold) to another user
+  - card packs
+    - Allows a user to buy randomized packs containing items from a configured pool
+    - Dungeon tiles, traps, monsters, treasures, and other dungeon items can be obtained from packs
   - trade offer
     - Allows a user to propose a trade with another user, specifying items and/or shop currency (Gold) to exchange
     - The other user can accept or decline the trade offer
 - dungeon maker port
   - Allows users to create, manage, and play ascii/text-based dungeons within Discord
+  - Dungeon tiles, traps, monsters, treasures, and equipment are ordinary inventory items
+  - First port the basic DungeonMakerV2 gameplay before adding expansions
+  - Raid rewards come from randomized item pools, mostly crafting items with rare artifacts possible
+  - Later dungeon gear includes tools and trinkets with effects; armor is out of scope for now
+  - Later expansions can add additional room types, tile behaviors, encounters, and dungeon systems
   - Players can invade each other's dungeons
   - Maybe integrate with shop?
     - sell dungeon tiles

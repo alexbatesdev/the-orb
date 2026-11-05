@@ -34,6 +34,7 @@ the feature backlog.
 - Add common command error handling.
 - Add audit logging for administrative and economy actions.
 - Add a persistent scheduled-effect framework for future delayed spells.
+- Define a shared interaction event vocabulary for cross-system rewards.
 
 This phase should remain small and should not include user-facing gameplay
 beyond basic health/diagnostic commands.
@@ -53,9 +54,18 @@ beyond basic health/diagnostic commands.
 - Add `+rep` and `-rep`.
 - Add abuse protections and an auditable reputation ledger.
 - Ignore bots and direct messages.
+- Add a centralized wisdom reward service that other subsystems can call.
+- Define reward events and source metadata for item use, crafting, games,
+  dungeons, ownership, and other meaningful interactions.
+- Add source-specific cooldowns, diminishing returns, or activity limits.
+- Record every non-message wisdom reward with its source and context.
+- Add tests for repeated interactions and reward caps.
 
 The detailed technical design lives in
 [KARMA_PLAN.md](./KARMA_PLAN.md).
+
+Wisdom is a cross-system foundation. Later phases should integrate with the
+reward service rather than creating their own unrelated reward calculations.
 
 ## Phase 2: Item and inventory core
 
@@ -75,12 +85,18 @@ use it.
 - Add item cooldowns and consumption rules.
 - Add basic admin spawn and destroy commands.
 - Add item transaction logging.
+- Define an extensible item-effect trigger model without implementing
+  dungeon-specific combat behavior yet.
 - Define craftable item recipes.
 - Consume crafting ingredients atomically.
 - Produce stackable or unique crafted items.
 - Support optional crafting duration.
 - Add crafted item values.
 - Start with a small recipe set, including potion-like items.
+- Support dungeon tiles, traps, monsters, treasures, and equipment as item
+  categories.
+- Use stable item identifiers and extensible item metadata for future dungeon
+  mechanics.
 
 The first items should be simple and useful for testing:
 
@@ -149,10 +165,17 @@ persistent scheduler has been exercised by simpler delayed effects.
 - Add the gold balance command.
 - Add gold payments.
 - Add item sell values.
+- Add randomized shop card packs.
+- Define weighted item pools for each pack.
+- Generate pack contents server-side.
+- Record pack purchases and generated contents in the transaction log.
+- Decide how duplicate items and pack rarity tiers work.
 - Add the daily wisdom and gold reward.
 - Require recent wisdom activity for daily claims.
 - Add the 24-hour claim cooldown.
 - Cap activity-based reward scaling.
+- Add wisdom rewards for claiming a daily and other intentional economy
+  interactions where appropriate.
 
 The daily reward should be implemented after wisdom and gold both exist, but
 before the larger dungeon economy.
@@ -171,6 +194,8 @@ before the larger dungeon economy.
 - Add enable/disable state for item definitions.
 - Add configurable item-effect actions.
 - Add moderator/admin audit history.
+- Add small wisdom rewards for meaningful item and crafting interactions,
+  subject to source-specific limits.
 
 Trades should exchange assets immediately. They do not need escrow or pending
 inventory reservations.
@@ -245,9 +270,10 @@ stored user content. Destroyed content is not restorable.
 This phase is separate from the general moderation framework because
 projection stones have their own publication and reaction state.
 
-## Phase 9: DungeonMakerV2 port
+## Phase 9: Basic DungeonMakerV2 port
 
-**Goal:** Port the existing dungeon game as the final major subsystem.
+**Goal:** Port the original dungeon game as a small, playable foundation before
+adding new systems.
 
 **Difficulty: 5/5**
 
@@ -257,7 +283,7 @@ The source project is
 ### Domain port
 
 - Port dungeon, room, player, and monster concepts.
-- Preserve the source gameplay rules where practical.
+- Preserve the useful source gameplay rules where practical.
 - Separate game logic from Discord command/rendering code.
 - Add persistent dungeon and run state.
 
@@ -279,18 +305,79 @@ The source project is
 - Do not retain a copy of the condemned dungeon.
 - Do not restore the original dungeon after condemnation.
 
-### Economy integration
+The basic port should be complete and playable before any of the following
+expansion systems are started.
 
-- Sell dungeon tiles.
-- Sell traps.
-- Sell monsters.
-- Sell treasures.
-- Add invasion rewards.
-- Reward dungeon owners for unclaimed treasure where appropriate.
-- Allow potions and other items to affect dungeon runs.
+## Phase 10: Dungeon expansion and raid rewards
 
-The basic dungeon port should be completed before invasions and economy
-integration.
+**Goal:** Expand the basic dungeon port using the shared item and reward
+systems.
+
+**Difficulty: 5/5**
+
+### Shared item integration
+
+- Represent dungeon tiles, traps, monsters, treasures, and equipment as
+  ordinary items.
+- Place item references into dungeon layouts and encounters.
+- Consume or award dungeon items through the shared inventory system.
+- Allow existing item effects to work in dungeon runs.
+- Sell dungeon-related items through the shop and randomized card packs.
+
+### Raid rewards
+
+- Award wisdom to players for intentional dungeon participation.
+- Award wisdom to dungeon owners when their dungeons are played.
+- Define random reward pools for successful raids.
+- Make most raid rewards ordinary crafting ingredients or other useful items.
+- Add a low-probability chance for rare artifacts.
+- Generate raid rewards server-side and record the result.
+- Define player and owner reward bundles that can include wisdom, gold, or
+  items.
+
+### Dungeon growth and incentives
+
+- Add persistent dungeon growth/progression state.
+- Add garden-like passive dungeon growth.
+- Add dedicated wisdom-boosting tiles for activities such as daily claims,
+  messaging, and raiding.
+- Add worship rooms with incentives for players who reach them.
+- Add rewards for dungeon owners who stop raiders before they reach worship
+  rooms.
+
+### Dungeon gear
+
+- Add tools as items with active effects that trigger when used on the
+  player's turn in combat.
+- Add trinkets as items with passive effects triggered by game events.
+- Support passive triggers such as:
+  - Every turn
+  - When an enemy attacks
+  - Before a status ailment is applied
+  - When combat begins
+  - When the player explores or reveals an area
+- Support preventative effects, such as blocking poison.
+- Support persistent player modifiers, such as:
+  - Always acting first
+  - Increased damage
+  - Expanded map visibility
+- Define deterministic ordering for multiple effects.
+- Define how prevention, replacement, stacking, and conflicting modifiers
+  resolve.
+- Do not add armor in the initial dungeon gear expansion.
+
+Passive trinkets should be treated as a high-complexity feature. They require
+an event-driven effect engine, combat and exploration hooks, status-effect
+resolution, modifier calculations, and comprehensive interaction tests.
+
+### Moderation and economy expansion
+
+- Sell dungeon tiles, traps, monsters, and treasures through the shop.
+- Reward dungeon owners for appropriate unclaimed treasure.
+- Apply existing content moderation to dungeon-created content.
+
+The basic dungeon port remains a prerequisite for all of these expansion
+systems.
 
 ## Deferred or optional features
 
@@ -323,5 +410,7 @@ Phase 0 Foundation
                       |
                       +--> Phase 8 Projection stones
                       |
-                      +--> Phase 9 Dungeon port
+                      +--> Phase 9 Basic dungeon port
+                               |
+                               +--> Phase 10 Dungeon expansion
 ```
