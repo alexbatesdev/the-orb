@@ -3,6 +3,7 @@ name = "wisest-wizard"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+    "aiosqlite>=0.20",
     "discord-py>=2.4",
     "python-dotenv>=1.0",
 ]

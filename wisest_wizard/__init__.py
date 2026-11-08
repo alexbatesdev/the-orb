@@ -1,0 +1,1 @@
+"""Wisest Wizard Discord bot."""

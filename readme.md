@@ -1,4 +1,46 @@
-plans
+# Wisest Wizard
+
+## Running the bot
+
+The project requires Python 3.12 or newer. Install dependencies with
+`python -m pip install -r requirements.txt`, copy `.env.example` to `.env`, and
+set `DISCORD_TOKEN` to the bot token from the Discord Developer Portal. Then
+start the bot with `python bot.py` (or `python -m wisest_wizard`).
+
+On startup, the bot validates its environment, opens the SQLite database at
+`DATABASE_PATH` (default: `data/wisest-wizard.sqlite3`), and applies any pending
+ordered SQL migrations before connecting to Discord. The database directory is
+created automatically and is excluded from Git. Back up the database file
+while the bot is stopped. Set `AUDIT_RETENTION_DAYS` to a positive number to
+enable bounded daily deletion of older audit records; leave it unset to retain
+them.
+
+The bot needs the Message Content privileged intent enabled in both code and
+the Discord Developer Portal for prefix commands.
+
+## Foundation structure
+
+- `wisest_wizard/app.py` owns startup, bot lifecycle, shared services, and prefix
+  behavior.
+- `wisest_wizard/cogs/` contains loadable command cogs.
+- `wisest_wizard/migrations/` contains ordered, transactional SQL migrations.
+- `wisest_wizard/database.py` owns the shared async SQLite connection and
+  transaction boundary.
+- `wisest_wizard/services/` contains reusable persistence, cooldown, audit,
+  scheduled-effect, and interaction-event contracts.
+
+Feature cogs should use shared services instead of issuing ad hoc database
+queries. Combine state changes and `AuditService.record_in_transaction` in the
+same database transaction when both must succeed together. Scheduled handlers
+must be registered by a bounded effect type and be safe to retry: a crash
+after a Discord side effect but before its completion is recorded can result
+in at-least-once delivery. Run a single bot process against a database; the
+scheduler recovers all in-flight rows during startup and is not designed for
+multiple active bot processes sharing the same SQLite file. Interaction events
+use a bounded event-type enum and unique event IDs so future reward handling
+can identify duplicate events without storing generic event payloads now.
+
+## Planned features
 
 - admin commands
   - banish
