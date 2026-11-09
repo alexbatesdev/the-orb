@@ -19,8 +19,8 @@ class TranslationTests(unittest.TestCase):
         self.assertEqual(translate("core.hello", name="{Wizard}"), "Hello, {Wizard}! ✨")
         self.assertEqual(translate("wisdom.check.value", value=12.3456), "Your wisdom is 12.346.")
         self.assertEqual(
-            translate("wisdom.rep.cooldown", seconds=3.25),
-            "You can give reputation again in 3.2 seconds.",
+            translate("wisdom.rep.cooldown", duration="3 seconds"),
+            "You can + or - rep again in 3 seconds.",
         )
 
     def test_missing_keys_and_placeholders_raise(self) -> None:

@@ -44,7 +44,9 @@ member's value. `i cast check wis` and `i cast chwi` are shortcuts for the
 same check; all three also work with the `cast` prefix. Use
 `i cast +rep username` or `i cast -rep username` to add
 or remove one point of wisdom; both commands share a per-giver, per-server
-daily cooldown and only accept current human server members. Names are
+24-hour cooldown by default and only accept current human server members.
+Set `WISDOM_REPUTATION_COOLDOWN_SECONDS` to change it. Remaining time is
+displayed in hours, minutes, and seconds, rounded up to the next second. Names are
 case-insensitive and can be partial usernames or display names. An exact match
 takes precedence; ambiguous matches require a more specific name or user ID.
 Mentions and user IDs also work without requiring a ping. Wisdom cannot fall

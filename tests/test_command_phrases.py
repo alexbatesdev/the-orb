@@ -217,11 +217,26 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
         self.send.assert_awaited_with("Check what? (The only available check right now is `wisdom`.)")
 
     async def test_cast_rep_resolves_partial_name_and_shares_cooldown(self) -> None:
-        await self.invoke("i cast +rep alex")
-        self.assertEqual(await self.bot.wisdom.get_value(10, 2), 1)
-        await self.invoke("i cast -rep sasha")
-        self.assertIn("give reputation again", self.send.await_args.args[0])
+        with patch("wisest_wizard.services.wisdom._current_time", return_value=1000):
+            await self.invoke("i cast +rep alex")
+            self.assertEqual(await self.bot.wisdom.get_value(10, 2), 1)
+            await self.invoke("i cast -rep sasha")
+            self.assertEqual(self.send.await_args.args[0], "You can + or - rep again in 24 hours.")
         self.assertEqual(await self.bot.wisdom.get_value(10, 3), 0)
+
+    async def test_rep_cooldown_displays_remaining_units(self) -> None:
+        with patch("wisest_wizard.services.wisdom._current_time") as current_time:
+            current_time.return_value = 1000
+            await self.invoke("i cast +rep alex")
+            for remaining, expected in (
+                (3661, "1 hour, 1 minute, 1 second"),
+                (61, "1 minute, 1 second"),
+                (0.25, "1 second"),
+            ):
+                with self.subTest(remaining=remaining):
+                    current_time.return_value = 1000 + 86400 - remaining
+                    await self.invoke("i cast -rep sasha")
+                    self.send.assert_awaited_with(f"You can + or - rep again in {expected}.")
 
     async def test_negative_rep(self) -> None:
         await self.bot.wisdom.change_reputation(10, 5, 2, 1)

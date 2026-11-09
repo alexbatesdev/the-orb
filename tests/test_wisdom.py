@@ -238,6 +238,13 @@ class WisdomServiceTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(row["count"], 2)
 
+    async def test_reputation_cooldown_expires_after_24_hours(self) -> None:
+        self.assertTrue((await self.wisdom.change_reputation(1, 10, 20, 1, now=100)).accepted)
+        blocked = await self.wisdom.change_reputation(1, 10, 21, -1, now=86499.5)
+        self.assertFalse(blocked.accepted)
+        self.assertEqual(blocked.retry_after, 0.5)
+        self.assertTrue((await self.wisdom.change_reputation(1, 10, 21, -1, now=86500)).accepted)
+
     async def test_reputation_rejects_self_and_bot_without_spending_cooldown(self) -> None:
         self_result = await self.wisdom.change_reputation(1, 10, 10, 1, now=100)
         bot_result = await self.wisdom.change_reputation(

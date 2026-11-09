@@ -5,6 +5,7 @@ import re
 import discord
 from discord.ext import commands
 
+from wisest_wizard.duration import format_duration
 from wisest_wizard.i18n import translate
 from wisest_wizard.services.wisdom import WisdomService
 
@@ -98,7 +99,9 @@ class WisdomCog(commands.Cog, name=translate("help.category.wisdom")):
             recipient_is_bot=target.bot,
         )
         if result.reason == "cooldown":
-            await ctx.send(translate("wisdom.rep.cooldown", seconds=result.retry_after))
+            await ctx.send(
+                translate("wisdom.rep.cooldown", duration=format_duration(result.retry_after))
+            )
             return
         if direction > 0:
             response = translate("wisdom.rep.gained", name=target.display_name, amount=result.amount)
