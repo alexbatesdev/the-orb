@@ -46,7 +46,7 @@
   "help.no_category": "Other",
   "help.category.core": "Core",
   "help.category.wisdom": "Wisdom",
-  "help.ending_note": "The bots prefix is `i cast ` or just `cast`! (not case sensitive)",
+  "help.ending_note": "The bots prefix is `i cast ` or just `cast `! (not case sensitive)",
   "help.command_not_found": "No command called \"{name}\" found.",
   "help.subcommand_not_found": "Command \"{command}\" has no subcommand named {name}",
   "help.no_subcommands": "Command \"{command}\" has no subcommands."
