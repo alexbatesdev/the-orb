@@ -8,7 +8,7 @@ from discord.ext import commands
 
 from wisest_wizard.app import WizardBot
 from wisest_wizard.config import Settings
-from wisest_wizard.database import Database
+from wisest_wizard.database import Database, DatabaseError
 
 _DEFAULT_GUILD = object()
 
@@ -37,6 +37,7 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
         self.bot_member = member(4, "HelperBot", bot=True)
         self.guild = SimpleNamespace(
             id=10,
+            me=SimpleNamespace(id=999, display_name="Wizard"),
             chunked=True,
             members=[self.author, self.alex, self.sasha, self.bot_member],
             chunk=AsyncMock(),
@@ -45,6 +46,7 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
             (entry for entry in self.guild.members if entry.id == member_id), None
         )
         self.send = AsyncMock()
+        self.channel = SimpleNamespace(send=AsyncMock())
         self.send_patch = patch.object(commands.Context, "send", self.send)
         self.send_patch.start()
 
@@ -57,7 +59,7 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
             content=content,
             author=self.author,
             guild=self.guild if guild is _DEFAULT_GUILD else guild,
-            channel=SimpleNamespace(),
+            channel=self.channel,
             attachments=[],
             _state=self.bot._connection,
         )
@@ -86,6 +88,26 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
         await self.bot.wisdom.change_reputation(10, 5, 2, 1)
         await self.invoke("i cast -rep the wiz")
         self.assertEqual(await self.bot.wisdom.get_value(10, 2), 0)
+
+    async def test_translated_reputation_results(self) -> None:
+        await self.invoke("i cast +rep alex")
+        self.assertEqual(self.send.await_args.args[0], "The Wizard gained 1.000 wisdom.")
+        self.author = member(6, "Other")
+        await self.invoke("i cast -rep alex")
+        self.assertEqual(self.send.await_args.args[0], "The Wizard lost 1.000 wisdom.")
+        self.author = member(7, "Third")
+        await self.invoke("i cast -rep alex")
+        self.assertEqual(self.send.await_args.args[0], "The Wizard has no wisdom to remove.")
+
+    async def test_translated_check_and_health_messages(self) -> None:
+        await self.invoke("i cast check")
+        self.send.assert_awaited_with("Check what? (The only available check right now is `wisdom`.)")
+        await self.invoke("i cast health")
+        self.send.assert_awaited_with("The wizard is awake; persistence is ready.")
+        with patch.object(self.database, "ping", side_effect=DatabaseError("test")):
+            with self.assertLogs("wisest_wizard.cogs.core", level="ERROR"):
+                await self.invoke("i cast health")
+        self.send.assert_awaited_with("The bot is online, but persistence is unavailable.")
 
     async def test_old_command_forms_do_not_invoke_commands(self) -> None:
         for content in ("cast karma", "i cast karma", "+rep AlexBates", "-rep AlexBates"):
@@ -135,3 +157,27 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
         await self.invoke("i cast +rep")
         self.assertIn("Missing required argument", self.send.await_args.args[0])
         self.assertEqual(await self.bot.wisdom.get_value(10, 2), 0)
+
+    async def test_help_uses_catalog_for_descriptions_and_generated_text(self) -> None:
+        await self.invoke("i cast help")
+        page = self.channel.send.await_args.args[0]
+        self.assertIn("Shows this message", page)
+        self.assertIn("Check wizard information.", page)
+        self.assertIn("Type i cast help command for more info on a command.", page)
+        self.channel.send.reset_mock()
+        await self.invoke("i cast help +rep")
+        page = self.channel.send.await_args.args[0]
+        self.assertIn("Give reputation with `i cast +rep username`.", page)
+        self.assertIn("Arguments:", page)
+        self.assertIn("No description given", page)
+
+    async def test_help_lookup_errors_use_catalog(self) -> None:
+        for content, expected in (
+            ("i cast help unknown", 'No command called "unknown" found.'),
+            ("i cast help check unknown", 'Command "check" has no subcommand named unknown'),
+            ("i cast help hello unknown", 'Command "hello" has no subcommands.'),
+        ):
+            with self.subTest(content=content):
+                self.channel.send.reset_mock()
+                await self.invoke(content)
+                self.assertIn(expected, self.channel.send.await_args.args[0])

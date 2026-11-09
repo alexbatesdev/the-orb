@@ -10,6 +10,7 @@ from discord.ext import commands
 from wisest_wizard.config import Settings, load_settings
 from wisest_wizard.database import Database
 from wisest_wizard.errors import handle_command_error
+from wisest_wizard.help import WizardHelpCommand
 from wisest_wizard.logging_config import configure_logging
 from wisest_wizard.services.audit import AuditService
 from wisest_wizard.services.cooldowns import PersistentCooldowns
@@ -33,7 +34,12 @@ class WizardBot(commands.Bot):
         intents = discord.Intents.default()
         intents.message_content = True
         intents.members = True
-        super().__init__(command_prefix=get_prefix, intents=intents, case_insensitive=True)
+        super().__init__(
+            command_prefix=get_prefix,
+            intents=intents,
+            case_insensitive=True,
+            help_command=WizardHelpCommand(),
+        )
         self.settings = settings
         self.database = database
         self.cooldowns = PersistentCooldowns(database)

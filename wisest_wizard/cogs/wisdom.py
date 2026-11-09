@@ -5,6 +5,7 @@ import re
 import discord
 from discord.ext import commands
 
+from wisest_wizard.i18n import translate
 from wisest_wizard.services.wisdom import WisdomService
 
 
@@ -16,7 +17,7 @@ async def find_member(guild: discord.Guild, query: str) -> discord.Member:
     if match:
         member = guild.get_member(int(match.group(1) or match.group(2)))
         if member is None:
-            raise commands.BadArgument("No server member matched that user ID or mention.")
+            raise commands.BadArgument(translate("wisdom.member.id_not_found"))
         return member
 
     needle = query.casefold()
@@ -32,15 +33,13 @@ async def find_member(guild: discord.Guild, query: str) -> discord.Member:
         if needle in member.name.casefold() or needle in member.display_name.casefold()
     ]
     if not matches:
-        raise commands.BadArgument("No server member matched that name.")
+        raise commands.BadArgument(translate("wisdom.member.name_not_found"))
     if len(matches) > 1:
-        raise commands.BadArgument(
-            "That name matches multiple server members; use a more specific name or user ID."
-        )
+        raise commands.BadArgument(translate("wisdom.member.ambiguous"))
     return matches[0]
 
 
-class WisdomCog(commands.Cog):
+class WisdomCog(commands.Cog, name=translate("help.category.wisdom")):
     def __init__(self, wisdom: WisdomService) -> None:
         self.wisdom = wisdom
 
@@ -54,29 +53,30 @@ class WisdomCog(commands.Cog):
             message.content,
         )
 
-    @commands.group(name="check", invoke_without_command=True, case_insensitive=True)
+    @commands.group(
+        name="check", invoke_without_command=True, case_insensitive=True,
+        help=translate("help.check"),
+    )
     async def check(self, ctx: commands.Context) -> None:
-        """Check wizard information."""
-        await ctx.send("Check what? (The only available check right now is `wisdom`.)")
+        await ctx.send(translate("wisdom.check.prompt"))
 
-    @check.command(name="wisdom")
+    @check.command(name="wisdom", help=translate("help.check_wisdom"))
     async def check_wisdom(self, ctx: commands.Context) -> None:
-        """Show the caller's current lazily-decayed wisdom."""
         if ctx.guild is None:
-            await ctx.send("Wisdom is only tracked inside a server.")
+            await ctx.send(translate("wisdom.check.server_only"))
             return
         value = await self.wisdom.get_value(ctx.guild.id, ctx.author.id)
-        await ctx.send(f"Your wisdom is {value:.3f}.")
+        await ctx.send(translate("wisdom.check.value", value=value))
 
     async def _change_reputation(
         self, ctx: commands.Context, direction: int, target_query: str
     ) -> None:
         if ctx.guild is None:
-            await ctx.send("Reputation can only be given inside a server.")
+            await ctx.send(translate("wisdom.rep.server_only"))
             return
         target_query = target_query.strip()
         if not target_query:
-            await ctx.send("Provide a server member's username or user ID.")
+            await ctx.send(translate("wisdom.rep.target_required"))
             return
         try:
             target = await find_member(ctx.guild, target_query)
@@ -84,10 +84,10 @@ class WisdomCog(commands.Cog):
             await ctx.send(str(error))
             return
         if target.bot:
-            await ctx.send("You cannot give reputation to a bot.")
+            await ctx.send(translate("wisdom.rep.bot"))
             return
         if target.id == ctx.author.id:
-            await ctx.send("You cannot give reputation to yourself.")
+            await ctx.send(translate("wisdom.rep.self"))
             return
 
         result = await self.wisdom.change_reputation(
@@ -98,30 +98,26 @@ class WisdomCog(commands.Cog):
             recipient_is_bot=target.bot,
         )
         if result.reason == "cooldown":
-            await ctx.send(
-                f"You can give reputation again in {result.retry_after:.1f} seconds."
-            )
+            await ctx.send(translate("wisdom.rep.cooldown", seconds=result.retry_after))
             return
         if direction > 0:
-            response = f"{target.display_name} gained {result.amount:.3f} wisdom."
+            response = translate("wisdom.rep.gained", name=target.display_name, amount=result.amount)
         elif result.amount == 0:
-            response = f"{target.display_name} has no wisdom to remove."
+            response = translate("wisdom.rep.empty", name=target.display_name)
         else:
-            response = f"{target.display_name} lost {result.amount:.3f} wisdom."
+            response = translate("wisdom.rep.lost", name=target.display_name, amount=result.amount)
         await ctx.send(response, allowed_mentions=discord.AllowedMentions.none())
 
-    @commands.command(name="+rep")
+    @commands.command(name="+rep", help=translate("help.positive_rep"))
     async def positive_reputation(
         self, ctx: commands.Context, *, target: str
     ) -> None:
-        """Give reputation with `i cast +rep username`."""
         await self._change_reputation(ctx, 1, target)
 
-    @commands.command(name="-rep")
+    @commands.command(name="-rep", help=translate("help.negative_rep"))
     async def negative_reputation(
         self, ctx: commands.Context, *, target: str
     ) -> None:
-        """Remove reputation with `i cast -rep username`."""
         await self._change_reputation(ctx, -1, target)
 
 async def setup(bot: commands.Bot) -> None:

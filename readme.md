@@ -57,6 +57,16 @@ with permission and attribution from Hunter R.'s
 [AC Letter Scorer](https://github.com/HunterRDev/AC-Letter-Scorer), which
 documents the Animal Crossing letter-scoring behavior and game bug.
 
+## Discord copy
+
+Discord-facing text lives in `wisest_wizard/locales/en.json`. Use
+`translate("key", name=value)` from `wisest_wizard.i18n` for replies, errors,
+and command help rather than embedding copy in Python. Templates use Python
+format placeholders, including numeric formats such as `{value:.3f}`.
+Missing keys or placeholders raise errors rather than silently displaying a
+fallback. Restart the bot after editing the catalog. English is currently the
+only catalog; language selection and other translations are not implemented.
+
 ## Foundation structure
 
 - `wisest_wizard/app.py` owns startup, bot lifecycle, shared services, and prefix

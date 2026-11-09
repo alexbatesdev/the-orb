@@ -5,29 +5,28 @@ import logging
 from discord.ext import commands
 
 from wisest_wizard.database import Database, DatabaseError
+from wisest_wizard.i18n import translate
 
 logger = logging.getLogger(__name__)
 
 
-class CoreCog(commands.Cog):
+class CoreCog(commands.Cog, name=translate("help.category.core")):
     def __init__(self, database: Database) -> None:
         self.database = database
 
-    @commands.command(name="hello")
+    @commands.command(name="hello", help=translate("help.hello"))
     async def hello(self, ctx: commands.Context) -> None:
-        """Usage: `cast hello` or `i cast hello`"""
-        await ctx.send(f"Hello, {ctx.author.display_name}! ✨")
+        await ctx.send(translate("core.hello", name=ctx.author.display_name))
 
-    @commands.command(name="health")
+    @commands.command(name="health", help=translate("help.health"))
     async def health(self, ctx: commands.Context) -> None:
-        """Report whether the bot and its persistence layer are ready."""
         try:
             await self.database.ping()
         except DatabaseError:
             logger.exception("Public health check found persistence unavailable.")
-            await ctx.send("The bot is online, but persistence is unavailable.")
+            await ctx.send(translate("core.health.unavailable"))
             return
-        await ctx.send("The wizard is awake; persistence is ready.")
+        await ctx.send(translate("core.health.ready"))
 
 
 async def setup(bot: commands.Bot) -> None:

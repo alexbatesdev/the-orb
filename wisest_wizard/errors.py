@@ -5,6 +5,7 @@ import logging
 from discord.ext import commands
 
 from wisest_wizard.database import DatabaseError
+from wisest_wizard.i18n import translate
 
 logger = logging.getLogger(__name__)
 
@@ -17,22 +18,22 @@ async def handle_command_error(
     if isinstance(error, commands.CommandInvokeError):
         error = error.original
     if isinstance(error, commands.NoPrivateMessage):
-        await ctx.send("This command can only be used in a server.")
+        await ctx.send(translate("errors.server_only"))
         return
     if isinstance(error, commands.BotMissingPermissions):
-        await ctx.send("I do not have the Discord permissions needed to do that.")
+        await ctx.send(translate("errors.bot_permissions"))
         return
     if isinstance(error, commands.MissingPermissions):
-        await ctx.send("You do not have permission to use this command.")
+        await ctx.send(translate("errors.user_permissions"))
         return
     if isinstance(error, commands.CheckFailure):
-        await ctx.send("You cannot use this command here.")
+        await ctx.send(translate("errors.check_failed"))
         return
     if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send(f"Missing required argument: `{error.param.name}`.")
+        await ctx.send(translate("errors.missing_argument", name=error.param.name))
         return
     if isinstance(error, commands.BadArgument):
-        await ctx.send("I could not understand one of the command arguments.")
+        await ctx.send(translate("errors.bad_argument"))
         return
     if isinstance(error, DatabaseError):
         logger.error(
@@ -40,10 +41,7 @@ async def handle_command_error(
             ctx.command,
             exc_info=(type(error), error, error.__traceback__),
         )
-        await ctx.send("Persistence is temporarily unavailable; please try again later.")
-        return
-    if isinstance(error, commands.CommandError):
-        await ctx.send(str(error))
+        await ctx.send(translate("errors.database"))
         return
     logger.error(
         "Unexpected error in command %s by user %s.",
@@ -51,4 +49,4 @@ async def handle_command_error(
         ctx.author.id,
         exc_info=(type(error), error, error.__traceback__),
     )
-    await ctx.send("The command failed unexpectedly. The error has been logged.")
+    await ctx.send(translate("errors.unexpected"))

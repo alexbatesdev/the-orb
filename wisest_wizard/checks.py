@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from discord.ext import commands
 
+from wisest_wizard.i18n import translate
+
 
 async def require_guild(ctx: commands.Context) -> int:
     if ctx.guild is None:
-        raise commands.NoPrivateMessage("This command can only be used in a server.")
+        raise commands.NoPrivateMessage(translate("errors.server_only"))
     return ctx.guild.id
 
 
