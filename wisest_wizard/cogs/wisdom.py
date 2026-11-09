@@ -41,8 +41,18 @@ async def find_member(guild: discord.Guild, query: str) -> discord.Member:
 
 
 class WisdomCog(commands.Cog, name=translate("help.category.wisdom")):
-    def __init__(self, wisdom: WisdomService) -> None:
+    def __init__(
+        self, wisdom: WisdomService, check_command: commands.Group
+    ) -> None:
         self.wisdom = wisdom
+        self.check_command = check_command
+        self.check_wisdom_command = commands.Command(
+            self.check_wisdom,
+            name="wisdom",
+            aliases=["wis"],
+            help=translate("help.check_wisdom"),
+        )
+        self.check_wisdom_command.cog = self
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -54,14 +64,12 @@ class WisdomCog(commands.Cog, name=translate("help.category.wisdom")):
             message.content,
         )
 
-    @commands.command(name="check", help=translate("help.check"))
-    async def check(self, ctx: commands.Context) -> None:
-        await ctx.send(translate("wisdom.check.prompt"))
+    async def cog_load(self) -> None:
+        self.check_command.add_command(self.check_wisdom_command)
 
-    @commands.command(
-        name="check wisdom", aliases=["check wis", "chwi"],
-        help=translate("help.check_wisdom"),
-    )
+    def cog_unload(self) -> None:
+        self.check_command.remove_command(self.check_wisdom_command.name)
+
     async def check_wisdom(self, ctx: commands.Context) -> None:
         if ctx.guild is None:
             await ctx.send(translate("wisdom.check.server_only"))
@@ -127,4 +135,7 @@ async def setup(bot: commands.Bot) -> None:
     wisdom = getattr(bot, "wisdom", None)
     if not isinstance(wisdom, WisdomService):
         raise RuntimeError("The bot must expose its initialized WisdomService before loading cogs.")
-    await bot.add_cog(WisdomCog(wisdom))
+    check_command = bot.get_command("check")
+    if not isinstance(check_command, commands.Group):
+        raise RuntimeError("The Core check command must be loaded before the Wisdom cog.")
+    await bot.add_cog(WisdomCog(wisdom, check_command))

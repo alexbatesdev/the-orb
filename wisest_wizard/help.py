@@ -63,6 +63,18 @@ class WizardHelpCommand(commands.DefaultHelpCommand):
         if self.show_parameter_descriptions:
             self.add_command_arguments(command)
 
+    def get_command_signature(self, command: commands.Command, /) -> str:
+        name = command.qualified_name
+        if command.aliases:
+            aliases = [
+                f"{command.parent.qualified_name} {alias}"
+                if command.parent is not None
+                else alias
+                for alias in command.aliases
+            ]
+            name = f"[{name}|{'|'.join(aliases)}]"
+        return f"{self.context.clean_prefix}{name}"
+
     def get_ending_note(self) -> str:
         return translate(
             "help.ending_note",
@@ -77,7 +89,7 @@ class WizardHelpCommand(commands.DefaultHelpCommand):
         self, ctx: commands.Context, /, *, command: str | None = None
     ) -> None:
         if command is not None and ctx.bot.get_cog(command) is None:
-            resolved = ctx.bot.all_commands.get(" ".join(command.split()))
+            resolved = ctx.bot.get_command(" ".join(command.split()))
             if resolved is not None:
                 await self.prepare_help_command(ctx, command)
                 if isinstance(resolved, commands.Group):
