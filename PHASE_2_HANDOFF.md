@@ -19,6 +19,9 @@ aliases or compatibility shims solely to preserve unreleased behavior.
 - `wisest_wizard/phrases.py` supports multiword command names and aliases.
   Declare intended phrases directly on commands; use existing cast prefixes,
   parsing, checks, error handling, and help.
+- The Core cog owns the `check` command group. Register feature-specific checks
+  as subcommands under that group from their owning cogs, so `help check` lists
+  checks from loaded modules; remove those subcommands when their cog unloads.
 - Put all Discord-facing copy, including help and validation messages, in
   `wisest_wizard/locales/en.json`. Use `translate` and existing duration
   formatting where appropriate.
@@ -103,6 +106,8 @@ aliases or compatibility shims solely to preserve unreleased behavior.
   ingredients twice.
 - Store crafted item values without implementing gold balances, selling, shops,
   or a gold ledger in this phase.
+- The daily wisdom, gold, and card-pack claim is planned for Phase 4, after gold
+  and randomized card packs exist. Do not implement the daily claim in Phase 2.
 
 ## Decisions to resolve before implementation
 
