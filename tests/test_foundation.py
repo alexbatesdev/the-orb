@@ -9,7 +9,11 @@ from wisest_wizard.config import Settings
 from wisest_wizard.database import Database, DatabaseError
 from wisest_wizard.services.audit import AuditService
 from wisest_wizard.services.cooldowns import CooldownScope, PersistentCooldowns
-from wisest_wizard.services.events import InteractionEvent, InteractionEventType
+from wisest_wizard.services.events import (
+    InteractionEvent,
+    InteractionEventType,
+    InteractionSource,
+)
 from wisest_wizard.services.scheduler import ScheduledEffects
 
 
@@ -31,7 +35,10 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
                 "SELECT version FROM schema_migrations ORDER BY version"
             )
         ).fetchall()
-        self.assertEqual([row["version"] for row in rows], ["0001_foundation.sql"])
+        self.assertEqual(
+            [row["version"] for row in rows],
+            ["0001_foundation.sql", "0002_wisdom.sql"],
+        )
 
     async def test_migrations_fail_if_an_applied_file_is_missing(self) -> None:
         migrations_dir = Path(self.temp_dir.name) / "incomplete-migrations"
@@ -251,7 +258,12 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
     async def test_prefix_matching_preserves_typed_case(self) -> None:
         self.assertEqual(get_prefix(None, SimpleNamespace(content="CAST hello")), "CAST ")
         self.assertEqual(get_prefix(None, SimpleNamespace(content="I CAST hello")), "I CAST ")
-        self.assertEqual(get_prefix(None, SimpleNamespace(content="hello")), ("i cast ", "cast "))
+        self.assertEqual(
+            get_prefix(None, SimpleNamespace(content="hello")),
+            ("i cast ", "cast ", "+", "-"),
+        )
+        self.assertEqual(get_prefix(None, SimpleNamespace(content="+rep @member")), "+")
+        self.assertEqual(get_prefix(None, SimpleNamespace(content="-rep @member")), "-")
 
     async def test_bot_setup_loads_core_commands(self) -> None:
         settings = Settings("test-token", Path(":memory:"), None)
@@ -260,6 +272,8 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
         try:
             self.assertIsNotNone(bot.get_command("hello"))
             self.assertIsNotNone(bot.get_command("health"))
+            self.assertIsNotNone(bot.get_command("karma"))
+            self.assertIsNotNone(bot.get_command("rep"))
         finally:
             await bot.close()
 
@@ -270,6 +284,6 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
             InteractionEvent(
                 event_type=InteractionEventType.ITEM_USED,
                 actor_id=1,
-                source="inventory",
+                source=InteractionSource.INVENTORY,
                 occurred_at=datetime(2026, 1, 1),
             )

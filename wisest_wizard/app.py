@@ -14,9 +14,10 @@ from wisest_wizard.logging_config import configure_logging
 from wisest_wizard.services.audit import AuditService
 from wisest_wizard.services.cooldowns import PersistentCooldowns
 from wisest_wizard.services.scheduler import ScheduledEffects
+from wisest_wizard.services.wisdom import WisdomRewardService, WisdomService
 
 logger = logging.getLogger(__name__)
-PREFIXES = ("i cast ", "cast ")
+PREFIXES = ("i cast ", "cast ", "+", "-")
 
 
 def get_prefix(bot: commands.Bot, message: discord.Message) -> str | tuple[str, ...]:
@@ -37,6 +38,8 @@ class WizardBot(commands.Bot):
         self.cooldowns = PersistentCooldowns(database)
         self.audit = AuditService(database, settings.audit_retention_days)
         self.scheduled_effects = ScheduledEffects(database)
+        self.wisdom = WisdomService(database, settings.wisdom, self.cooldowns)
+        self.wisdom_rewards = WisdomRewardService(self.wisdom)
         self._audit_cleanup_task: asyncio.Task[None] | None = None
 
     async def setup_hook(self) -> None:
@@ -48,6 +51,7 @@ class WizardBot(commands.Bot):
                 self._audit_cleanup_loop(), name="audit-retention-cleanup"
             )
         await self.load_extension("wisest_wizard.cogs.core")
+        await self.load_extension("wisest_wizard.cogs.wisdom")
         recovered = await self.scheduled_effects.recover_in_flight()
         if recovered:
             logger.warning("Recovered %s interrupted scheduled effects.", recovered)

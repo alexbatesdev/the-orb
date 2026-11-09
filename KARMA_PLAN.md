@@ -1,17 +1,15 @@
 # Karma System Plan
 
-Plan only. Nothing here is implemented yet.
-
 ## Approach
-Track per-guild, per-user karma in SQLite, keyed on Discord user IDs. Each message is graded with the Animal Crossing (GameCube, North American) letter algorithm, the grade is normalized to 0..1, and that nudges the user's karma (also 0..1) upward. Decay is linear after a grace period and computed lazily from timestamps, so no background job is needed. Every tunable number lives in one config block.
+Track per-guild, per-user wisdom in SQLite, keyed on Discord user IDs. Each human server message, including command messages, is graded with the Animal Crossing (GameCube, North American) letter algorithm. Its normalized quality is in 0..1 and adds points to an unbounded wisdom total. Decay is linear after a grace period and computed lazily from timestamps, so no background job is needed. Every tunable number lives in one config block.
 
 ## Decisions
 - **Identity:** `(guild_id, user_id)` from `message.guild.id` and `message.author.id`. Ignore bots and DMs.
-- **Storage:** SQLite via `aiosqlite`. Table `karma(guild_id, user_id, value REAL, last_active REAL, last_scored REAL, PRIMARY KEY(guild_id, user_id))`. `value` is always in 0..1.
+- **Storage:** SQLite via `aiosqlite`. Wisdom is stored per `(guild_id, user_id)` with its last activity timestamp. The total is an unbounded, nonnegative float.
 - **Scored text:** only the first 192 characters of the message (the in-game letter limit). The rest is ignored.
-- **Cooldown:** a message earns karma at most once per 30 seconds per user (`COOLDOWN_SECONDS`).
+- **Cooldown:** positive-quality messages earn wisdom at most once per configured interval per guild/user (`WISDOM_MESSAGE_COOLDOWN_SECONDS`, default 1 second). Zero-quality messages do not consume it.
 - **Listener:** `@bot.listen("on_message")`, so commands keep working.
-- **Command:** `cast karma` shows the current (decayed) karma.
+- **Command:** `cast karma` shows the caller's current (decayed) wisdom as a number, not a percentage.
 
 ## Letter scoring (raw score)
 Source: Hunter R., "How Villagers 'Read' Your Letters in Animal Crossing" (8VbwWVvw-zI) and "Further Exploiting Animal Crossing's Letter System" (mleA6tW_7To), cross-checked against his scorer, https://github.com/HunterRDev/AC-Letter-Scorer (`letter_scorer.js`). The raw score is the sum of seven checks, run on the first 192 characters:
@@ -31,7 +29,7 @@ In the game, 100 or more is a good reply and under 50 is a bad one. The theoreti
 ### Trigram table: recreate the bug
 The NA game forgot the stop characters in its trigram lists. A lookup that fails scans past the table and keeps reading, so about 23,000 trigrams count as valid instead of the intended 776. We recreate this on purpose.
 
-- Data file `data/trigrams_bugged.txt`: lines starting with `~X~` begin the section for first letter `X`. Other lines list the valid 2-character endings.
+- Data file `wisest_wizard/data/trigrams_bugged.txt`: lines starting with `~X~` begin the section for first letter `X`. Other lines list the valid 2-character endings.
 - Lookup for a word: uppercase its first letter, find that header, then scan every following line, **skipping other headers instead of stopping** (this is the bug), and count a hit if any line contains the word's last two characters.
 - Load once at startup into memory.
 - Port the behavior exactly from `letter_scorer.js` (`checkB`, `getAllTrigrams`), then cross-check scores against his web tool on a set of sample strings.
@@ -45,9 +43,9 @@ Two steps, both tunable:
    - `SCORE_FLOOR` default 0 (anything at or below this earns nothing).
    - `SCORE_CEIL` default 100 (the game's "good letter" line earns the full amount).
    - `QUALITY_CURVE` default 1.0 (linear). Above 1 favors really good messages, below 1 is more generous.
-2. **Karma update:** `karma += GAIN * q * (1 - karma)`
-   - `GAIN` default 0.02, the fraction of the remaining gap closed by a perfect message.
-   - The `(1 - karma)` factor gives diminishing returns, so karma approaches 1 but never exceeds it. A user needs sustained good messages to stay high.
+2. **Wisdom update:** `wisdom += GAIN * q`
+   - `GAIN` default 0.02 points per perfect message.
+   - Wisdom accumulates without an upper bound; message quality still scales each addition from zero to `GAIN`.
 
 Knobs to start with: `SCORE_FLOOR`, `SCORE_CEIL`, `GAIN` (and optionally `QUALITY_CURVE`).
 
@@ -62,32 +60,36 @@ value      = max(0, value - DECAY_PER_DAY * decay_days)
 
 - `GRACE_DAYS` default **7**.
 - `DECAY_PER_DAY` default 0.02 (about 50 days to fall from 1.0 to 0 after the grace period). Placeholder value, since we don't know how it will feel yet.
-- On a new message: apply decay first, then add the gain, then set `last_active = now`.
+- On an earning message: apply decay first, then add the gain, then set `last_active = now`.
 - Only karma-earning messages reset `last_active` by default. The flag `REFRESH_ON_ANY_MESSAGE` changes that.
+- Direct reputation and centralized reward grants also apply decay before updating the total and reset the activity timestamp.
 
 ## Tunables (single config block, env-overridable)
 | Name | Default | Meaning |
 |---|---|---|
-| `MAX_CHARS` | 192 | Characters of each message that get scored |
-| `COOLDOWN_SECONDS` | 30 | Minimum gap between karma-earning messages per user |
-| `SCORE_FLOOR` | 0 | Raw score that maps to q = 0 |
-| `SCORE_CEIL` | 100 | Raw score that maps to q = 1 |
-| `QUALITY_CURVE` | 1.0 | Exponent shaping q |
-| `GAIN` | 0.02 | Fraction of the remaining gap closed per perfect message |
-| `GRACE_DAYS` | 7 | Idle days before decay starts |
-| `DECAY_PER_DAY` | 0.02 | Karma lost per idle day after the grace period |
-| `REFRESH_ON_ANY_MESSAGE` | false | Whether non-earning messages reset the idle timer |
+| `WISDOM_MAX_CHARS` | 192 | Characters of each message that get scored |
+| `WISDOM_MESSAGE_COOLDOWN_SECONDS` | 1 | Minimum gap between positive-quality messages per guild/user |
+| `WISDOM_SCORE_FLOOR` | 0 | Raw score that maps to q = 0 |
+| `WISDOM_SCORE_CEIL` | 100 | Raw score that maps to q = 1 |
+| `WISDOM_QUALITY_CURVE` | 1.0 | Exponent shaping q |
+| `WISDOM_GAIN` | 0.02 | Points added for a perfect message |
+| `WISDOM_GRACE_DAYS` | 7 | Idle days before decay starts |
+| `WISDOM_DECAY_PER_DAY` | 0.02 | Wisdom lost per idle day after the grace period |
+| `WISDOM_REFRESH_ON_ANY_MESSAGE` | false | Whether non-earning messages reset the idle timer |
+| `WISDOM_REPUTATION_COOLDOWN_SECONDS` | 86400 | Shared per-giver rep cooldown |
+| `WISDOM_REPUTATION_CHANGE` | 1 | Points changed by `+rep` or `-rep` |
+| `WISDOM_REWARD_COOLDOWN_SECONDS` | 86400 | Per-event-type cross-system reward limit |
+| `WISDOM_REWARD_GAIN` | 0.02 | Points added by a configured cross-system reward |
 
 ## Todos
-1. `data/trigrams_bugged.txt` and a loader (table comes from Hunter's repo, with credit).
-2. `scoring.py`: `raw_score(text) -> int` (checks A-G with the bugged trigram lookup) and `quality(raw) -> float`. Pure functions, unit-testable.
-3. `config.py`: the tunables above, read from env with defaults.
-4. `karma.py`: SQLite schema, upsert, lazy decay, gain update, cooldown.
-5. `bot.py`: `on_message` listener and `cast karma` command. Add `aiosqlite` with `uv add aiosqlite`.
-6. Tests (pytest): each check A-G, the bugged trigram behavior, normalization edges, decay with grace period, cooldown. Cross-check some raw scores against Hunter's web scorer.
-7. `.gitignore`: add the `.db` file.
+1. `wisest_wizard/data/trigrams_bugged.txt` and its loader (included with permission and attribution to Hunter R.).
+2. `wisest_wizard/scoring.py`: `raw_score(text) -> int` (checks A-G with the bugged trigram lookup) and `quality(raw) -> float`. Pure functions, unit-testable.
+3. `wisest_wizard/config.py`: the tunables above, read from env with defaults.
+4. `wisest_wizard/services/wisdom.py`: SQLite persistence, lazy decay, additive gains, rep, and centralized rewards.
+5. Wisdom cog: `on_message` listener, `cast karma`, and shared-cooldown `+rep` / `-rep`.
+6. Tests: each check A-G, the bugged trigram behavior, normalization edges, decay with grace period, cooldown, reputation, and centralized rewards.
 
 ## Notes
 - Lazy decay means bot downtime never skips decay.
-- A user's stored value is only rewritten when they send a message. Their displayed value is always the decayed one.
+- A user's stored value is only rewritten when they earn wisdom or `REFRESH_ON_ANY_MESSAGE` is enabled. Their displayed value is always the decayed one.
 - After running for a while, look at the real distribution of raw scores on your server, then tune `SCORE_CEIL`, `GAIN` and `DECAY_PER_DAY` to taste.

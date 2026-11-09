@@ -15,6 +15,9 @@ It is intentionally separate from the feature backlog in `readme.md`.
 
 - Wisdom is the bot's interaction reward and should be available throughout
   the system, not only in the message-karma subsystem.
+- Wisdom is an unbounded, nonnegative floating-point total. Quality-normalized
+  message rewards and the shared reward service add points; inactivity decay
+  subtracts points lazily without imposing an upper cap.
 - Meaningful interactions across subsystems should award a very small amount of
   wisdom, including item use, crafting, games, dungeon play, dungeon growth,
   and other intentional participation.

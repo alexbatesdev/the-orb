@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from math import isfinite
 
+import aiosqlite
+
 from wisest_wizard.database import Database
 
 
@@ -26,6 +28,28 @@ class PersistentCooldowns:
 
     async def acquire(
         self,
+        key: str,
+        duration_seconds: float,
+        *,
+        scope: CooldownScope,
+        guild_id: int | str | None = None,
+        user_id: int | str | None = None,
+        now: float | None = None,
+    ) -> CooldownResult:
+        async with self.database.transaction() as connection:
+            return await self.acquire_in_transaction(
+                connection,
+                key,
+                duration_seconds,
+                scope=scope,
+                guild_id=guild_id,
+                user_id=user_id,
+                now=now,
+            )
+
+    async def acquire_in_transaction(
+        self,
+        connection: aiosqlite.Connection,
         key: str,
         duration_seconds: float,
         *,
@@ -67,30 +91,29 @@ class PersistentCooldowns:
         current_time = time.time() if now is None else now
         if not isfinite(current_time):
             raise ValueError("Cooldown timestamp must be finite.")
-        async with self.database.transaction() as connection:
-            row = await (
-                await connection.execute(
-                    """
-                    SELECT expires_at FROM cooldowns
-                    WHERE cooldown_key = ? AND scope = ? AND guild_id = ? AND user_id = ?
-                    """,
-                    (key, scope.value, guild_value, user_value),
-                )
-            ).fetchone()
-            if row is not None and row["expires_at"] > current_time:
-                return CooldownResult(False, row["expires_at"] - current_time)
-
-            expires_at = current_time + duration_seconds
-            if not isfinite(expires_at):
-                raise ValueError("Cooldown expiration time must be finite.")
+        row = await (
             await connection.execute(
                 """
-                INSERT INTO cooldowns (
-                    cooldown_key, scope, guild_id, user_id, expires_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?)
-                ON CONFLICT (cooldown_key, scope, guild_id, user_id)
-                DO UPDATE SET expires_at = excluded.expires_at, updated_at = excluded.updated_at
+                SELECT expires_at FROM cooldowns
+                WHERE cooldown_key = ? AND scope = ? AND guild_id = ? AND user_id = ?
                 """,
-                (key, scope.value, guild_value, user_value, expires_at, current_time),
+                (key, scope.value, guild_value, user_value),
             )
+        ).fetchone()
+        if row is not None and row["expires_at"] > current_time:
+            return CooldownResult(False, row["expires_at"] - current_time)
+
+        expires_at = current_time + duration_seconds
+        if not isfinite(expires_at):
+            raise ValueError("Cooldown expiration time must be finite.")
+        await connection.execute(
+            """
+            INSERT INTO cooldowns (
+                cooldown_key, scope, guild_id, user_id, expires_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT (cooldown_key, scope, guild_id, user_id)
+            DO UPDATE SET expires_at = excluded.expires_at, updated_at = excluded.updated_at
+            """,
+            (key, scope.value, guild_value, user_value, expires_at, current_time),
+        )
         return CooldownResult(True, 0.0)

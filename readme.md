@@ -4,8 +4,18 @@
 
 The project requires Python 3.12 or newer. Install dependencies with
 `python -m pip install -r requirements.txt`, copy `.env.example` to `.env`, and
-set `DISCORD_TOKEN` to the bot token from the Discord Developer Portal. Then
-start the bot with `python bot.py` (or `python -m wisest_wizard`).
+set `DISCORD_TOKEN` to the bot token from the Discord Developer Portal. From
+a Bash shell, start the bot with `bash start.sh`. The script starts the full
+bot in the foreground, preferring the project's `.venv` if present and otherwise
+using Python from `PATH`. Install dependencies into the interpreter it will use.
+Stop the bot with Ctrl+C. `python bot.py` and `python -m wisest_wizard` also
+remain available.
+
+There is no separate development mode yet: running the script locally connects
+to Discord using the configured token, just as it does on a server. For safe
+local testing, use a separate Discord bot/token and a separate `DATABASE_PATH`
+in your local environment. Do not run two bot processes against the same
+database.
 
 On startup, the bot validates its environment, opens the SQLite database at
 `DATABASE_PATH` (default: `data/wisest-wizard.sqlite3`), and applies any pending
@@ -18,6 +28,30 @@ them.
 The bot needs the Message Content privileged intent enabled in both code and
 the Discord Developer Portal for prefix commands.
 
+## Wisdom
+
+Human messages in servers, including bot commands, are scored with the
+Animal Crossing (GameCube, North American) letter rules. Only the first
+`WISDOM_MAX_CHARS` characters (default 192) count. Positive-quality messages
+add `WISDOM_GAIN * quality` to the sender's unbounded wisdom total; zero-quality
+messages do not consume the message cooldown. The default message cooldown is
+one second and can be tuned with `WISDOM_MESSAGE_COOLDOWN_SECONDS`.
+
+Wisdom decays lazily after the configured grace period. `cast karma` shows
+the caller's current value as a number, without a percentage or another
+member's value. Use `+rep @member` or `-rep @member` to add or remove one point
+of wisdom; both commands share a per-giver, per-server daily cooldown and only
+accept current human server members. Wisdom cannot fall below zero.
+
+The remaining scoring, decay, reputation, and shared reward-service settings
+are listed in `.env.example`. The message and reputation cooldowns, score
+normalization, gain, decay, and reward limits are validated at startup.
+
+The trigram table in `wisest_wizard/data/trigrams_bugged.txt` is reproduced
+with permission and attribution from Hunter R.'s
+[AC Letter Scorer](https://github.com/HunterRDev/AC-Letter-Scorer), which
+documents the Animal Crossing letter-scoring behavior and game bug.
+
 ## Foundation structure
 
 - `wisest_wizard/app.py` owns startup, bot lifecycle, shared services, and prefix
@@ -27,7 +61,7 @@ the Discord Developer Portal for prefix commands.
 - `wisest_wizard/database.py` owns the shared async SQLite connection and
   transaction boundary.
 - `wisest_wizard/services/` contains reusable persistence, cooldown, audit,
-  scheduled-effect, and interaction-event contracts.
+  scheduled-effect, interaction-event, and wisdom-reward contracts.
 
 Feature cogs should use shared services instead of issuing ad hoc database
 queries. Combine state changes and `AuditService.record_in_transaction` in the
@@ -39,6 +73,11 @@ scheduler recovers all in-flight rows during startup and is not designed for
 multiple active bot processes sharing the same SQLite file. Interaction events
 use a bounded event-type enum and unique event IDs so future reward handling
 can identify duplicate events without storing generic event payloads now.
+
+Future wisdom grants use `WisdomRewardService` with a typed interaction event,
+source enum, unique event ID, and identifier-only context. Each event type has
+its own per-user/guild cooldown; the service is available for later phases but
+does not award item, crafting, game, or dungeon rewards on its own.
 
 ## Planned features
 
@@ -68,8 +107,8 @@ can identify duplicate events without storing generic event payloads now.
   - linear karma decay on inactive after 1 week
   - karma gain on send messages
     - follows animal crossing gamecube letter grading system
-  - "+rep" and "-rep" commands for people to give or remove karma from others
-    - cooldown 1per day, shared across all users and both "+rep" and "-rep" commands
+  - "+rep" and "-rep" commands for people to give or remove wisdom from current server members
+    - one-per-day cooldown per giver, shared by both commands
 - inventory system
   - check inventory
     - shows the users inventory
