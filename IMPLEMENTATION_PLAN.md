@@ -171,14 +171,15 @@ persistent scheduler has been exercised by simpler delayed effects.
 - Record pack purchases and generated contents in the transaction log.
 - Decide how duplicate items and pack rarity tiers work.
 - Add the daily wisdom and gold reward.
+- Include one daily card pack in the daily reward.
 - Require recent wisdom activity for daily claims.
 - Add the 24-hour claim cooldown.
 - Cap activity-based reward scaling.
 - Add wisdom rewards for claiming a daily and other intentional economy
   interactions where appropriate.
 
-The daily reward should be implemented after wisdom and gold both exist, but
-before the larger dungeon economy.
+The daily reward should be implemented after wisdom, gold, and randomized card
+packs exist, but before the larger dungeon economy.
 
 ## Phase 5: Immediate trades and advanced item administration
 

@@ -204,11 +204,10 @@ cooldowns, and help apply.
   - could also integrate with the shop for selling crafted items
   - make main money loop be crafting artifacts and selling/high-alch'ing them
 - claim daily
-  - Allows a user to claim their daily reward of wisdom and gold
+  - Allows a user to claim their daily reward of wisdom, gold, and one card pack
   - User must have gained enough karma/wisdom in the past 24 rolling hours to claim the daily reward
   - The daily reward also has a 24 hour cooldown
-  - The reward consists of both some wisdom and some gold, not much
-    - I think the amount of wisdom and gold should scale with the user's recent activity and karma gain
+  - The reward includes some wisdom and gold, with amounts scaled to recent activity
 - pocket dimension
   - Creates a thread in the current channel
 - toys/silly spells
