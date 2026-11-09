@@ -9,7 +9,7 @@ Track per-guild, per-user wisdom in SQLite, keyed on Discord user IDs. Each huma
 - **Scored text:** only the first 192 characters of the message (the in-game letter limit). The rest is ignored.
 - **Cooldown:** positive-quality messages earn wisdom at most once per configured interval per guild/user (`WISDOM_MESSAGE_COOLDOWN_SECONDS`, default 1 second). Zero-quality messages do not consume it.
 - **Listener:** `@bot.listen("on_message")`, so commands keep working.
-- **Command:** `cast karma` shows the caller's current (decayed) wisdom as a number, not a percentage.
+- **Command:** `i cast check wisdom` shows the caller's current (decayed) wisdom as a number, not a percentage.
 
 ## Letter scoring (raw score)
 Source: Hunter R., "How Villagers 'Read' Your Letters in Animal Crossing" (8VbwWVvw-zI) and "Further Exploiting Animal Crossing's Letter System" (mleA6tW_7To), cross-checked against his scorer, https://github.com/HunterRDev/AC-Letter-Scorer (`letter_scorer.js`). The raw score is the sum of seven checks, run on the first 192 characters:
@@ -86,7 +86,7 @@ value      = max(0, value - DECAY_PER_DAY * decay_days)
 2. `wisest_wizard/scoring.py`: `raw_score(text) -> int` (checks A-G with the bugged trigram lookup) and `quality(raw) -> float`. Pure functions, unit-testable.
 3. `wisest_wizard/config.py`: the tunables above, read from env with defaults.
 4. `wisest_wizard/services/wisdom.py`: SQLite persistence, lazy decay, additive gains, rep, and centralized rewards.
-5. Wisdom cog: `on_message` listener, `cast karma`, and shared-cooldown `+rep` / `-rep`.
+5. Wisdom cog: `on_message` listener, `i cast check wisdom`, and shared-cooldown `i cast +rep` / `i cast -rep` with member name lookup.
 6. Tests: each check A-G, the bugged trigram behavior, normalization edges, decay with grace period, cooldown, reputation, and centralized rewards.
 
 ## Notes

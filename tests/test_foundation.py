@@ -260,10 +260,8 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(get_prefix(None, SimpleNamespace(content="I CAST hello")), "I CAST ")
         self.assertEqual(
             get_prefix(None, SimpleNamespace(content="hello")),
-            ("i cast ", "cast ", "+", "-"),
+            ("i cast ", "cast "),
         )
-        self.assertEqual(get_prefix(None, SimpleNamespace(content="+rep @member")), "+")
-        self.assertEqual(get_prefix(None, SimpleNamespace(content="-rep @member")), "-")
 
     async def test_bot_setup_loads_core_commands(self) -> None:
         settings = Settings("test-token", Path(":memory:"), None)
@@ -272,8 +270,11 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
         try:
             self.assertIsNotNone(bot.get_command("hello"))
             self.assertIsNotNone(bot.get_command("health"))
-            self.assertIsNotNone(bot.get_command("karma"))
-            self.assertIsNotNone(bot.get_command("rep"))
+            self.assertIsNotNone(bot.get_command("check wisdom"))
+            self.assertIsNone(bot.get_command("karma"))
+            self.assertIsNone(bot.get_command("rep"))
+            self.assertIsNotNone(bot.get_command("+rep"))
+            self.assertIsNotNone(bot.get_command("-rep"))
         finally:
             await bot.close()
 

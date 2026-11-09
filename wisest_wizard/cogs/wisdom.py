@@ -1,9 +1,43 @@
 from __future__ import annotations
 
+import re
+
 import discord
 from discord.ext import commands
 
 from wisest_wizard.services.wisdom import WisdomService
+
+
+async def find_member(guild: discord.Guild, query: str) -> discord.Member:
+    if not guild.chunked:
+        await guild.chunk(cache=True)
+
+    match = re.fullmatch(r"<@!?(\d+)>|(\d+)", query)
+    if match:
+        member = guild.get_member(int(match.group(1) or match.group(2)))
+        if member is None:
+            raise commands.BadArgument("No server member matched that user ID or mention.")
+        return member
+
+    needle = query.casefold()
+    members = guild.members
+    exact = [
+        member
+        for member in members
+        if needle in {member.name.casefold(), member.display_name.casefold()}
+    ]
+    matches = exact or [
+        member
+        for member in members
+        if needle in member.name.casefold() or needle in member.display_name.casefold()
+    ]
+    if not matches:
+        raise commands.BadArgument("No server member matched that name.")
+    if len(matches) > 1:
+        raise commands.BadArgument(
+            "That name matches multiple server members; use a more specific name or user ID."
+        )
+    return matches[0]
 
 
 class WisdomCog(commands.Cog):
@@ -20,8 +54,13 @@ class WisdomCog(commands.Cog):
             message.content,
         )
 
-    @commands.command(name="karma")
-    async def karma(self, ctx: commands.Context) -> None:
+    @commands.group(name="check", invoke_without_command=True, case_insensitive=True)
+    async def check(self, ctx: commands.Context) -> None:
+        """Check wizard information."""
+        await ctx.send("Check what? (The only available check right now is `wisdom`.)")
+
+    @check.command(name="wisdom")
+    async def check_wisdom(self, ctx: commands.Context) -> None:
         """Show the caller's current lazily-decayed wisdom."""
         if ctx.guild is None:
             await ctx.send("Wisdom is only tracked inside a server.")
@@ -29,19 +68,20 @@ class WisdomCog(commands.Cog):
         value = await self.wisdom.get_value(ctx.guild.id, ctx.author.id)
         await ctx.send(f"Your wisdom is {value:.3f}.")
 
-    @commands.command(name="rep")
-    async def reputation(self, ctx: commands.Context, target: discord.Member) -> None:
-        """Use `+rep @member` or `-rep @member` once per day."""
+    async def _change_reputation(
+        self, ctx: commands.Context, direction: int, target_query: str
+    ) -> None:
         if ctx.guild is None:
             await ctx.send("Reputation can only be given inside a server.")
             return
-        content = ctx.message.content.lstrip().lower()
-        if content.startswith("+rep"):
-            direction = 1
-        elif content.startswith("-rep"):
-            direction = -1
-        else:
-            await ctx.send("Use `+rep @member` or `-rep @member`.")
+        target_query = target_query.strip()
+        if not target_query:
+            await ctx.send("Provide a server member's username or user ID.")
+            return
+        try:
+            target = await find_member(ctx.guild, target_query)
+        except commands.BadArgument as error:
+            await ctx.send(str(error))
             return
         if target.bot:
             await ctx.send("You cannot give reputation to a bot.")
@@ -63,12 +103,26 @@ class WisdomCog(commands.Cog):
             )
             return
         if direction > 0:
-            await ctx.send(f"{target.display_name} gained {result.amount:.3f} wisdom.")
+            response = f"{target.display_name} gained {result.amount:.3f} wisdom."
         elif result.amount == 0:
-            await ctx.send(f"{target.display_name} has no wisdom to remove.")
+            response = f"{target.display_name} has no wisdom to remove."
         else:
-            await ctx.send(f"{target.display_name} lost {result.amount:.3f} wisdom.")
+            response = f"{target.display_name} lost {result.amount:.3f} wisdom."
+        await ctx.send(response, allowed_mentions=discord.AllowedMentions.none())
 
+    @commands.command(name="+rep")
+    async def positive_reputation(
+        self, ctx: commands.Context, *, target: str
+    ) -> None:
+        """Give reputation with `i cast +rep username`."""
+        await self._change_reputation(ctx, 1, target)
+
+    @commands.command(name="-rep")
+    async def negative_reputation(
+        self, ctx: commands.Context, *, target: str
+    ) -> None:
+        """Remove reputation with `i cast -rep username`."""
+        await self._change_reputation(ctx, -1, target)
 
 async def setup(bot: commands.Bot) -> None:
     wisdom = getattr(bot, "wisdom", None)

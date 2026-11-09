@@ -11,7 +11,7 @@ Phase 2 inventory or economy work.
 Phase 1 includes:
 
 - Animal Crossing letter scoring, normalization, persistent per-guild wisdom,
-  message cooldown, lazy inactivity decay, and `cast karma`.
+  message cooldown, lazy inactivity decay, and `i cast check wisdom`.
 - `+rep` / `-rep`, their shared daily cooldown, anti-abuse protections, and an
   auditable reputation ledger.
 - A centralized wisdom reward service and typed source/event metadata contract
@@ -82,7 +82,7 @@ zero-quality message does not consume it.
   backwards must never cause negative decay or increase wisdom.
 - Only earning messages reset `last_active` unless
   `REFRESH_ON_ANY_MESSAGE` is enabled.
-- `cast karma` shows only the caller's current decayed numeric value, with no
+- `i cast check wisdom` shows only the caller's current decayed numeric value, with no
   percentage or other-member lookup; a user with no row starts at zero.
 
 ### Reputation and shared rewards
@@ -108,7 +108,7 @@ zero-quality message does not consume it.
   Its initial default is one second for local tuning.
 - `+rep` / `-rep` target current human server members only. They share a
   per-giver, per-server 24-hour cooldown.
-- `cast karma` displays the caller's unbounded wisdom as a numeric float only.
+- `i cast check wisdom` displays the caller's unbounded wisdom as a numeric float only.
 - Permission to include and attribute the trigram data was confirmed. The
   table is credited in setup documentation; no source JavaScript is copied.
 

@@ -17,7 +17,7 @@ from wisest_wizard.services.scheduler import ScheduledEffects
 from wisest_wizard.services.wisdom import WisdomRewardService, WisdomService
 
 logger = logging.getLogger(__name__)
-PREFIXES = ("i cast ", "cast ", "+", "-")
+PREFIXES = ("i cast ", "cast ")
 
 
 def get_prefix(bot: commands.Bot, message: discord.Message) -> str | tuple[str, ...]:
@@ -32,6 +32,7 @@ class WizardBot(commands.Bot):
     def __init__(self, settings: Settings, database: Database) -> None:
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.members = True
         super().__init__(command_prefix=get_prefix, intents=intents, case_insensitive=True)
         self.settings = settings
         self.database = database

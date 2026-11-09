@@ -361,7 +361,7 @@ class WisdomCogTests(unittest.IsolatedAsyncioTestCase):
         message = SimpleNamespace(
             guild=SimpleNamespace(id=1),
             author=SimpleNamespace(id=2, bot=False),
-            content="cast karma",
+            content="i cast check wisdom",
         )
         await cog.on_message(message)
-        wisdom.process_message.assert_awaited_once_with(1, 2, "cast karma")
+        wisdom.process_message.assert_awaited_once_with(1, 2, "i cast check wisdom")

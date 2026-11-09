@@ -25,8 +25,9 @@ while the bot is stopped. Set `AUDIT_RETENTION_DAYS` to a positive number to
 enable bounded daily deletion of older audit records; leave it unset to retain
 them.
 
-The bot needs the Message Content privileged intent enabled in both code and
-the Discord Developer Portal for prefix commands.
+The bot needs the Message Content and Server Members privileged intents enabled
+in the Discord Developer Portal. Server Members lets the bot resolve partial
+usernames against the full current member list.
 
 ## Wisdom
 
@@ -37,11 +38,15 @@ add `WISDOM_GAIN * quality` to the sender's unbounded wisdom total; zero-quality
 messages do not consume the message cooldown. The default message cooldown is
 one second and can be tuned with `WISDOM_MESSAGE_COOLDOWN_SECONDS`.
 
-Wisdom decays lazily after the configured grace period. `cast karma` shows
+Wisdom decays lazily after the configured grace period. `i cast check wisdom` shows
 the caller's current value as a number, without a percentage or another
-member's value. Use `+rep @member` or `-rep @member` to add or remove one point
-of wisdom; both commands share a per-giver, per-server daily cooldown and only
-accept current human server members. Wisdom cannot fall below zero.
+member's value. Use `i cast +rep username` or `i cast -rep username` to add
+or remove one point of wisdom; both commands share a per-giver, per-server
+daily cooldown and only accept current human server members. Names are
+case-insensitive and can be partial usernames or display names. An exact match
+takes precedence; ambiguous matches require a more specific name or user ID.
+Mentions and user IDs also work without requiring a ping. Wisdom cannot fall
+below zero.
 
 The remaining scoring, decay, reputation, and shared reward-service settings
 are listed in `.env.example`. The message and reputation cooldowns, score
