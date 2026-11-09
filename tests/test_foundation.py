@@ -270,6 +270,7 @@ class FoundationTests(unittest.IsolatedAsyncioTestCase):
         try:
             self.assertIsNotNone(bot.get_command("hello"))
             self.assertIsNotNone(bot.get_command("health"))
+            self.assertIsNotNone(bot.get_command("check"))
             self.assertIsNotNone(bot.get_command("check wisdom"))
             self.assertIsNone(bot.get_command("karma"))
             self.assertIsNone(bot.get_command("rep"))

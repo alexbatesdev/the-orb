@@ -76,7 +76,7 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
         await self.invoke("I CAST CHECK WISDOM")
         self.send.assert_awaited_with("Your wisdom is 0.000.")
         await self.invoke("i cast hello")
-        self.send.assert_awaited_with("Hello, Giver! ✨")
+        self.send.assert_awaited_with("Hello, Giver!")
         await self.invoke("cast check wisdom")
         self.send.assert_awaited_with("Your wisdom is 0.000.")
 
@@ -86,11 +86,8 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
             for content in (
                 "i cast check wisdom",
                 "i cast check wis",
-                "i cast chwi",
                 "cast check wis",
-                "cast chwi",
                 "I CAST CHECK WIS",
-                "I CAST CHWI",
             ):
                 with self.subTest(content=content):
                     self.send.reset_mock()
@@ -99,18 +96,30 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
                     get_value.assert_awaited_with(10, 1)
 
     async def test_wisdom_aliases_reject_dms(self) -> None:
-        for content in ("i cast check wis", "i cast chwi"):
+        for content in ("i cast check wisdom", "i cast check wis"):
             with self.subTest(content=content):
                 self.send.reset_mock()
                 await self.invoke(content, guild=None)
-                self.send.assert_awaited_once_with("Wisdom is only tracked inside a server.")
+                self.send.assert_awaited_once_with("Wisdom is only tracked from within a guild.")
 
     async def test_wisdom_aliases_are_in_command_help(self) -> None:
-        for content in ("i cast help check wisdom", "i cast help check wis", "i cast help chwi"):
+        for content in ("i cast help check wisdom", "i cast help check wis"):
             with self.subTest(content=content):
                 self.channel.send.reset_mock()
                 await self.invoke(content)
-                self.assertIn("`check wis`, or `chwi`", self.channel.send.await_args.args[0])
+                self.assertIn("check wis", self.channel.send.await_args.args[0])
+
+    async def test_check_help_lists_checks_from_modules(self) -> None:
+        await self.invoke("i cast help check")
+        page = self.channel.send.await_args.args[0]
+        self.assertIn("Commands:", page)
+        self.assertIn("`wisdom`", page)
+
+    async def test_unloading_wisdom_removes_its_check_subcommand(self) -> None:
+        await self.bot.unload_extension("wisest_wizard.cogs.wisdom")
+        self.assertIsNone(self.bot.get_command("check wisdom"))
+        await self.bot.load_extension("wisest_wizard.cogs.wisdom")
+        self.assertIsNotNone(self.bot.get_command("check wisdom"))
 
     async def test_phrase_routing_prefers_longest_and_preserves_arguments(self) -> None:
         called = AsyncMock()
@@ -211,10 +220,12 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
         command = self.bot.get_command("check wisdom")
         self.assertIsNotNone(command)
         self.assertIs(self.bot.get_command("check wis"), command)
-        self.assertIs(self.bot.get_command("chwi"), command)
+        self.assertIsNone(self.bot.get_command("chwi"))
         self.assertIsNone(self.bot.get_command("check wisdomish"))
         await self.invoke("cast check wisdomish")
-        self.send.assert_awaited_with("Check what? (The only available check right now is `wisdom`.)")
+        self.send.assert_awaited_with(
+            "What would you like to check? Use `cast help check` to see the available checks."
+        )
 
     async def test_cast_rep_resolves_partial_name_and_shares_cooldown(self) -> None:
         with patch("wisest_wizard.services.wisdom._current_time", return_value=1000):
@@ -255,7 +266,9 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_translated_check_and_health_messages(self) -> None:
         await self.invoke("i cast check")
-        self.send.assert_awaited_with("Check what? (The only available check right now is `wisdom`.)")
+        self.send.assert_awaited_with(
+            "What would you like to check? Use `i cast help check` to see the available checks."
+        )
         await self.invoke("i cast health")
         self.send.assert_awaited_with("The wizard is awake; persistence is ready.")
         with patch.object(self.database, "ping", side_effect=DatabaseError("test")):
@@ -320,12 +333,20 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("**Wisdom:**", page)
         self.assertNotIn("**Core:**\n\n", page)
         self.assertNotIn("**Wisdom:**\n\n", page)
+        core_commands = page.split("**Core:**", maxsplit=1)[1].split(
+            "**Wisdom:**", maxsplit=1
+        )[0]
+        self.assertIn("- `check`", core_commands)
+        wisdom_commands = page.split("**Wisdom:**", maxsplit=1)[1].split(
+            "**\u200bOther:**", maxsplit=1
+        )[0]
+        self.assertNotIn("- `check`", wisdom_commands)
         self.assertNotIn("Cog", page)
         self.assertNotIn("```", page)
         self.assertIn("- `health` -", page)
         self.assertIn("Shows this message", page)
         self.assertIn("Report whether the bot and its persistence layer are ready.", page)
-        self.assertIn("`i cast help <command>`", page)
+        self.assertIn("The bots prefix is `i cast `!", page)
         self.channel.send.reset_mock()
         await self.invoke("i cast help +rep")
         page = self.channel.send.await_args.args[0]

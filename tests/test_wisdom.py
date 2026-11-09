@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock
 from pathlib import Path
 from unittest.mock import patch
 
+from discord.ext import commands
+
 from wisest_wizard.config import WisdomSettings
 from wisest_wizard.cogs.wisdom import WisdomCog
 from wisest_wizard.database import Database
@@ -358,7 +360,11 @@ class WisdomServiceTests(unittest.IsolatedAsyncioTestCase):
 class WisdomCogTests(unittest.IsolatedAsyncioTestCase):
     async def test_listener_ignores_dms_and_bots_but_scores_commands(self) -> None:
         wisdom = SimpleNamespace(process_message=AsyncMock())
-        cog = WisdomCog(wisdom)
+
+        async def check(ctx: commands.Context) -> commands.Context:
+            return ctx
+
+        cog = WisdomCog(wisdom, commands.Group(check, name="check"))
         await cog.on_message(
             SimpleNamespace(guild=None, author=SimpleNamespace(bot=False))
         )

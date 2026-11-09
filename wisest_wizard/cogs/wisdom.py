@@ -47,9 +47,10 @@ class WisdomCog(commands.Cog, name=translate("help.category.wisdom")):
         self.wisdom = wisdom
         self.check_command = check_command
         self.check_wisdom_command = commands.Command(
-            self.check_wisdom,
+            WisdomCog.check_wisdom,
             name="wisdom",
             aliases=["wis"],
+            case_insensitive=True,
             help=translate("help.check_wisdom"),
         )
         self.check_wisdom_command.cog = self

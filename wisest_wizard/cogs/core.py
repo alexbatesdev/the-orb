@@ -14,7 +14,12 @@ class CoreCog(commands.Cog, name=translate("help.category.core")):
     def __init__(self, database: Database) -> None:
         self.database = database
 
-    @commands.group(name="check", invoke_without_command=True, help=translate("help.check"))
+    @commands.group(
+        name="check",
+        invoke_without_command=True,
+        case_insensitive=True,
+        help=translate("help.check"),
+    )
     async def check(self, ctx: commands.Context) -> None:
         await ctx.send(
             translate("core.check.prompt", prefix=ctx.clean_prefix)
