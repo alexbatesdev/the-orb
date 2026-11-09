@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+
 import discord
 from discord.ext import commands
 
@@ -13,8 +15,53 @@ class WizardHelpCommand(commands.DefaultHelpCommand):
             commands_heading=translate("help.commands_heading"),
             default_argument_description=translate("help.argument_no_description"),
             no_category=translate("help.no_category"),
+            paginator=commands.Paginator(prefix=None, suffix=None),
             command_attrs={"help": translate("help.command")},
         )
+
+    async def send_bot_help(
+        self,
+        mapping: Mapping[commands.Cog | None, list[commands.Command]],
+        /,
+    ) -> None:
+        self.paginator.add_line(self.commands_heading)
+        await super().send_bot_help(mapping)
+
+    def add_indented_commands(
+        self,
+        command_list: Sequence[commands.Command],
+        /,
+        *,
+        heading: str,
+        max_size: int | None = None,
+    ) -> None:
+        del max_size
+        if not command_list:
+            return
+        self.paginator.add_line(f"**{heading}**")
+        for command in command_list:
+            entry = f"- `{command.name}`"
+            if command.short_doc:
+                entry += f" - {command.short_doc}"
+            self.paginator.add_line(self.shorten_text(entry))
+
+    def add_command_formatting(self, command: commands.Command, /) -> None:
+        if command.description:
+            self.paginator.add_line(command.description, empty=True)
+
+        self.paginator.add_line(translate("help.command_heading"), empty=True)
+        self.paginator.add_line(f"`{self.get_command_signature(command)}`")
+
+        if command.help:
+            try:
+                self.paginator.add_line(command.help, empty=True)
+            except RuntimeError:
+                for line in command.help.splitlines():
+                    self.paginator.add_line(line)
+                self.paginator.add_line()
+
+        if self.show_parameter_descriptions:
+            self.add_command_arguments(command)
 
     def get_ending_note(self) -> str:
         return translate(

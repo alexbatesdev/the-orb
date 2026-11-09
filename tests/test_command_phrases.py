@@ -315,15 +315,26 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
     async def test_help_uses_catalog_for_descriptions_and_generated_text(self) -> None:
         await self.invoke("i cast help")
         page = self.channel.send.await_args.args[0]
+        self.assertIn("Commands:", page)
+        self.assertIn("**Core:**", page)
+        self.assertIn("**Wisdom:**", page)
+        self.assertNotIn("**Core:**\n\n", page)
+        self.assertNotIn("**Wisdom:**\n\n", page)
+        self.assertNotIn("Cog", page)
+        self.assertNotIn("```", page)
+        self.assertIn("- `health` -", page)
         self.assertIn("Shows this message", page)
-        self.assertIn("Check wizard information.", page)
-        self.assertIn("Type i cast help command for more info on a command.", page)
+        self.assertIn("Report whether the bot and its persistence layer are ready.", page)
+        self.assertIn("`i cast help <command>`", page)
         self.channel.send.reset_mock()
         await self.invoke("i cast help +rep")
         page = self.channel.send.await_args.args[0]
-        self.assertIn("Give reputation with `i cast +rep username`.", page)
+        self.assertIn("Commend the wise with `i cast +rep username`.", page)
+        self.assertIn("Command:", page)
+        self.assertIn("`i cast +rep`", page)
         self.assertIn("Arguments:", page)
         self.assertIn("No description given", page)
+        self.assertNotIn("```", page)
 
     async def test_help_lookup_errors_use_catalog(self) -> None:
         for content, expected in (
