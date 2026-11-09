@@ -40,7 +40,9 @@ one second and can be tuned with `WISDOM_MESSAGE_COOLDOWN_SECONDS`.
 
 Wisdom decays lazily after the configured grace period. `i cast check wisdom` shows
 the caller's current value as a number, without a percentage or another
-member's value. Use `i cast +rep username` or `i cast -rep username` to add
+member's value. `i cast check wis` and `i cast chwi` are shortcuts for the
+same check; all three also work with the `cast` prefix. Use
+`i cast +rep username` or `i cast -rep username` to add
 or remove one point of wisdom; both commands share a per-giver, per-server
 daily cooldown and only accept current human server members. Names are
 case-insensitive and can be partial usernames or display names. An exact match
@@ -71,6 +73,7 @@ only catalog; language selection and other translations are not implemented.
 
 - `wisest_wizard/app.py` owns startup, bot lifecycle, shared services, and prefix
   behavior.
+- `wisest_wizard/phrases.py` resolves command names and aliases as phrases.
 - `wisest_wizard/cogs/` contains loadable command cogs.
 - `wisest_wizard/migrations/` contains ordered, transactional SQL migrations.
 - `wisest_wizard/database.py` owns the shared async SQLite connection and
@@ -93,6 +96,14 @@ Future wisdom grants use `WisdomRewardService` with a typed interaction event,
 source enum, unique event ID, and identifier-only context. Each event type has
 its own per-user/guild cooldown; the service is available for later phases but
 does not award item, crafting, game, or dungeon rewards on its own.
+
+Commands can declare multiword names and aliases directly with
+`@commands.command(name="check wisdom", aliases=["check wis", "chwi"])`.
+The router matches whole words case-insensitively, accepts whitespace between
+words, and selects the longest registered phrase before handing any remaining
+arguments to Discord.py. Declare phrases using single spaces between words;
+duplicate command names or aliases fail registration. Standard command checks,
+cooldowns, and help apply.
 
 ## Planned features
 

@@ -26,10 +26,27 @@ class WizardHelpCommand(commands.DefaultHelpCommand):
     def command_not_found(self, string: str, /) -> str:
         return translate("help.command_not_found", name=string)
 
+    async def command_callback(
+        self, ctx: commands.Context, /, *, command: str | None = None
+    ) -> None:
+        if command is not None and ctx.bot.get_cog(command) is None:
+            resolved = ctx.bot.all_commands.get(" ".join(command.split()))
+            if resolved is not None:
+                await self.prepare_help_command(ctx, command)
+                if isinstance(resolved, commands.Group):
+                    await self.send_group_help(resolved)
+                else:
+                    await self.send_command_help(resolved)
+                return
+        await super().command_callback(ctx, command=command)
+
     def subcommand_not_found(
         self, command: commands.Command, string: str, /
     ) -> str:
-        if isinstance(command, commands.Group) and command.all_commands:
+        prefix = command.qualified_name.lower() + " "
+        if (
+            isinstance(command, commands.Group) and command.all_commands
+        ) or any(name.lower().startswith(prefix) for name in self.context.bot.all_commands):
             return translate(
                 "help.subcommand_not_found", command=command.qualified_name, name=string
             )

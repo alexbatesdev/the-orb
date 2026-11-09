@@ -1,5 +1,6 @@
 import asyncio
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
@@ -60,6 +61,8 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
             author=self.author,
             guild=self.guild if guild is _DEFAULT_GUILD else guild,
             channel=self.channel,
+            created_at=datetime.now(timezone.utc),
+            edited_at=None,
             attachments=[],
             _state=self.bot._connection,
         )
@@ -76,6 +79,142 @@ class CommandPhraseTests(unittest.IsolatedAsyncioTestCase):
         self.send.assert_awaited_with("Hello, Giver! ✨")
         await self.invoke("cast check wisdom")
         self.send.assert_awaited_with("Your wisdom is 0.000.")
+
+    async def test_wisdom_aliases_use_same_value_and_support_both_prefixes(self) -> None:
+        with patch.object(self.bot.wisdom, "get_value", new_callable=AsyncMock) as get_value:
+            get_value.return_value = 12.3456
+            for content in (
+                "i cast check wisdom",
+                "i cast check wis",
+                "i cast chwi",
+                "cast check wis",
+                "cast chwi",
+                "I CAST CHECK WIS",
+                "I CAST CHWI",
+            ):
+                with self.subTest(content=content):
+                    self.send.reset_mock()
+                    await self.invoke(content)
+                    self.send.assert_awaited_once_with("Your wisdom is 12.346.")
+                    get_value.assert_awaited_with(10, 1)
+
+    async def test_wisdom_aliases_reject_dms(self) -> None:
+        for content in ("i cast check wis", "i cast chwi"):
+            with self.subTest(content=content):
+                self.send.reset_mock()
+                await self.invoke(content, guild=None)
+                self.send.assert_awaited_once_with("Wisdom is only tracked inside a server.")
+
+    async def test_wisdom_aliases_are_in_command_help(self) -> None:
+        for content in ("i cast help check wisdom", "i cast help check wis", "i cast help chwi"):
+            with self.subTest(content=content):
+                self.channel.send.reset_mock()
+                await self.invoke(content)
+                self.assertIn("`check wis`, or `chwi`", self.channel.send.await_args.args[0])
+
+    async def test_phrase_routing_prefers_longest_and_preserves_arguments(self) -> None:
+        called = AsyncMock()
+
+        @commands.command(name="route")
+        async def route(ctx: commands.Context, *, text: str) -> None:
+            await called("short", text)
+
+        @commands.command(name="route target", aliases=["rt", "route to"])
+        async def route_target(ctx: commands.Context, *, text: str) -> None:
+            await called("long", text)
+
+        self.bot.add_command(route)
+        self.bot.add_command(route_target)
+        for content, expected in (
+            ("i cast route target The Wizard", ("long", "The Wizard")),
+            ("i cast ROUTE\tTO  The Wizard", ("long", "The Wizard")),
+            ("cast rt The Wizard", ("long", "The Wizard")),
+            ("cast route targetable", ("short", "targetable")),
+        ):
+            with self.subTest(content=content):
+                called.reset_mock()
+                await self.invoke(content)
+                called.assert_awaited_once_with(*expected)
+        await self.invoke("cast route target")
+        self.assertIn("Missing required argument", self.send.await_args.args[0])
+        self.assertIs(self.bot.get_command("route target"), route_target)
+        self.assertIs(self.bot.get_command("ROUTE TO"), route_target)
+        self.bot.remove_command("route target")
+        self.assertIsNone(self.bot.get_command("rt"))
+
+    async def test_phrase_command_checks_are_enforced_for_aliases(self) -> None:
+        called = AsyncMock()
+
+        @commands.command(name="restricted action", aliases=["shortcut"])
+        @commands.check(lambda ctx: False)
+        async def restricted(ctx: commands.Context) -> None:
+            await called()
+
+        self.bot.add_command(restricted)
+        for content in ("cast restricted action", "cast shortcut"):
+            with self.subTest(content=content):
+                self.send.reset_mock()
+                await self.invoke(content)
+                self.send.assert_awaited_once_with("You cannot use this command here.")
+        called.assert_not_awaited()
+
+    async def test_phrase_aliases_share_discord_cooldown(self) -> None:
+        called = AsyncMock()
+
+        @commands.command(name="limited action", aliases=["la"])
+        @commands.cooldown(1, 60, commands.BucketType.user)
+        async def limited(ctx: commands.Context) -> None:
+            await called()
+
+        self.bot.add_command(limited)
+        await self.invoke("cast limited action")
+        with self.assertLogs("wisest_wizard.errors", level="ERROR"):
+            await self.invoke("cast la")
+        called.assert_awaited_once()
+        self.send.assert_awaited_once_with(
+            "The command failed unexpectedly. The error has been logged."
+        )
+
+    async def test_normal_discord_groups_still_work(self) -> None:
+        called = AsyncMock()
+
+        @commands.group(name="test group", invoke_without_command=True)
+        async def group(ctx: commands.Context) -> None:
+            await called("group")
+
+        @group.command(name="child")
+        async def child(ctx: commands.Context, *, text: str) -> None:
+            await called(text)
+
+        self.bot.add_command(group)
+        await self.invoke("cast test group child hello")
+        called.assert_awaited_once_with("hello")
+        self.assertIs(self.bot.get_command("test group child"), child)
+        self.assertIsNone(self.bot.get_command("test group missing"))
+
+    async def test_phrase_registration_rejects_bad_spacing_and_conflicts(self) -> None:
+        @commands.command(name="bad  spacing")
+        async def bad(ctx: commands.Context) -> None:
+            pass
+
+        @commands.command(name="another", aliases=["CHECK WIS"])
+        async def conflict(ctx: commands.Context) -> None:
+            pass
+
+        with self.assertRaisesRegex(ValueError, "single spaces"):
+            self.bot.add_command(bad)
+        with self.assertRaises(commands.CommandRegistrationError):
+            self.bot.add_command(conflict)
+        self.assertIsNone(self.bot.get_command("another"))
+
+    async def test_wisdom_phrases_point_to_one_command(self) -> None:
+        command = self.bot.get_command("check wisdom")
+        self.assertIsNotNone(command)
+        self.assertIs(self.bot.get_command("check wis"), command)
+        self.assertIs(self.bot.get_command("chwi"), command)
+        self.assertIsNone(self.bot.get_command("check wisdomish"))
+        await self.invoke("cast check wisdomish")
+        self.send.assert_awaited_with("Check what? (The only available check right now is `wisdom`.)")
 
     async def test_cast_rep_resolves_partial_name_and_shares_cooldown(self) -> None:
         await self.invoke("i cast +rep alex")

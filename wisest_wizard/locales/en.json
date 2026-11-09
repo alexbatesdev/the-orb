@@ -28,7 +28,7 @@
   "help.hello": "Usage: `cast hello` or `i cast hello`",
   "help.health": "Report whether the bot and its persistence layer are ready.",
   "help.check": "Check wizard information.",
-  "help.check_wisdom": "Show the caller's current lazily-decayed wisdom.",
+  "help.check_wisdom": "Show your wisdom with `check wisdom`, `check wis`, or `chwi`.",
   "help.positive_rep": "Give reputation with `i cast +rep username`.",
   "help.negative_rep": "Remove reputation with `i cast -rep username`.",
   "help.arguments_heading": "Arguments:",

@@ -12,6 +12,7 @@ from wisest_wizard.database import Database
 from wisest_wizard.errors import handle_command_error
 from wisest_wizard.help import WizardHelpCommand
 from wisest_wizard.logging_config import configure_logging
+from wisest_wizard.phrases import match_phrase
 from wisest_wizard.services.audit import AuditService
 from wisest_wizard.services.cooldowns import PersistentCooldowns
 from wisest_wizard.services.scheduler import ScheduledEffects
@@ -48,6 +49,45 @@ class WizardBot(commands.Bot):
         self.wisdom = WisdomService(database, settings.wisdom, self.cooldowns)
         self.wisdom_rewards = WisdomRewardService(self.wisdom)
         self._audit_cleanup_task: asyncio.Task[None] | None = None
+
+    def add_command(self, command: commands.Command, /) -> None:
+        for phrase in (command.name, *command.aliases):
+            if not phrase or phrase != " ".join(phrase.split()):
+                raise ValueError(f"Command phrase must use single spaces between words: {phrase!r}")
+        super().add_command(command)
+
+    async def get_context(
+        self,
+        origin: discord.Message | discord.Interaction,
+        /,
+        *,
+        cls: type[commands.Context] = commands.Context,
+    ) -> commands.Context:
+        ctx = await super().get_context(origin, cls=cls)
+        if isinstance(origin, discord.Interaction) or ctx.prefix is None:
+            return ctx
+        start = len(ctx.prefix)
+        if self.strip_after_prefix:
+            while start < len(origin.content) and origin.content[start].isspace():
+                start += 1
+        match = match_phrase(origin.content[start:], self.all_commands)
+        if match is not None:
+            ctx.command, ctx.invoked_with, end = match
+            ctx.view.index = start + end
+            ctx.view.previous = start
+        return ctx
+
+    def get_command(self, name: str, /) -> commands.Command | None:
+        name = " ".join(name.split())
+        match = match_phrase(name, self.all_commands)
+        if match is None:
+            return None
+        command, _, end = match
+        if end == len(name):
+            return command
+        if isinstance(command, commands.Group):
+            return command.get_command(name[end:].strip())
+        return None
 
     async def setup_hook(self) -> None:
         await self.database.open()

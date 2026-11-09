@@ -53,14 +53,14 @@ class WisdomCog(commands.Cog, name=translate("help.category.wisdom")):
             message.content,
         )
 
-    @commands.group(
-        name="check", invoke_without_command=True, case_insensitive=True,
-        help=translate("help.check"),
-    )
+    @commands.command(name="check", help=translate("help.check"))
     async def check(self, ctx: commands.Context) -> None:
         await ctx.send(translate("wisdom.check.prompt"))
 
-    @check.command(name="wisdom", help=translate("help.check_wisdom"))
+    @commands.command(
+        name="check wisdom", aliases=["check wis", "chwi"],
+        help=translate("help.check_wisdom"),
+    )
     async def check_wisdom(self, ctx: commands.Context) -> None:
         if ctx.guild is None:
             await ctx.send(translate("wisdom.check.server_only"))
